@@ -1,0 +1,14 @@
+# ROS 2 / colcon generated files
+/build/
+/install/
+/log/
+
+# Python generated files
+__pycache__/
+*.py[cod]
+
+# Editor and operating system files
+.vscode/
+*.swp
+*.swo
+.DS_Store

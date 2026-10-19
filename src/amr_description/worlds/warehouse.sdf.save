@@ -1,0 +1,340 @@
+
+<?xml version="1.0"?>
+<sdf version="1.9">
+  <world name="warehouse">
+
+    <physics name="default_physics" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system"
+            name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system"
+            name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+            name="gz::sim::systems::SceneBroadcaster"/>
+
+    <light name="sun" type="directional">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.3 -0.8</direction>
+    </light>
+
+    <model name="floor">
+      <static>true</static>
+      <link name="floor_link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>16 12</size>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>16 12</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.65 0.68 0.70 1</ambient>
+            <diffuse>0.65 0.68 0.70 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Parallel rack row A: left side of warehouse -->
+    <model name="rack_left_front">
+      <static>true</static>
+      <pose>-3 2.5 0 0 0 0</pose>
+      <link name="rack_frame">
+        <!-- Four vertical uprights -->
+        <visual name="upright_1">
+          <pose>-1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+          <material><ambient>0.12 0.22 0.32 1</ambient><diffuse>0.12 0.22 0.32 1</diffuse></material>
+        </visual>
+        <collision name="upright_1_collision">
+          <pose>-1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+        </collision>
+
+        <visual name="upright_2">
+          <pose>-0.38 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+          <material><ambient>0.12 0.22 0.32 1</ambient><diffuse>0.12 0.22 0.32 1</diffuse></material>
+        </visual>
+        <collision name="upright_2_collision">
+          <pose>-0.38 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+        </collision>
+
+        <visual name="upright_3">
+          <pose>0.38 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+          <material><ambient>0.12 0.22 0.32 1</ambient><diffuse>0.12 0.22 0.32 1</diffuse></material>
+        </visual>
+        <collision name="upright_3_collision">
+          <pose>0.38 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+        </collision>
+
+        <visual name="upright_4">
+          <pose>1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+          <material><ambient>0.12 0.22 0.32 1</ambient><diffuse>0.12 0.22 0.32 1</diffuse></material>
+        </visual>
+        <collision name="upright_4_collision">
+          <pose>1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+        </collision>
+
+        <!-- Three levels of horizontal beams -->
+        <visual name="beam_front_low">
+          <pose>0 -0.05 0.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+          <material><ambient>0.85 0.35 0.08 1</ambient><diffuse>0.85 0.35 0.08 1</diffuse></material>
+        </visual>
+        <collision name="beam_front_low_collision">
+          <pose>0 -0.05 0.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+        </collision>
+
+        <visual name="beam_front_mid">
+          <pose>0 -0.05 0.85 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+          <material><ambient>0.85 0.35 0.08 1</ambient><diffuse>0.85 0.35 0.08 1</diffuse></material>
+        </visual>
+        <collision name="beam_front_mid_collision">
+          <pose>0 -0.05 0.85 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+        </collision>
+
+        <visual name="beam_front_top">
+          <pose>0 -0.05 1.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+          <material><ambient>0.85 0.35 0.08 1</ambient><diffuse>0.85 0.35 0.08 1</diffuse></material>
+        </visual>
+        <collision name="beam_front_top_collision">
+          <pose>0 -0.05 1.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+        </collision>
+
+        <!-- Shelf decks -->
+        <visual name="deck_low">
+          <pose>0 0 0.42 0 0 0</pose>
+          <geometry><box><size>2.3 0.65 0.06</size></box></geometry>
+          <material><ambient>0.45 0.50 0.55 1</ambient><diffuse>0.45 0.50 0.55 1</diffuse></material>
+        </visual>
+        <collision name="deck_low_collision">
+          <pose>0 0 0.42 0 0 0</pose>
+          <geometry><box><size>2.3 0.65 0.06</size></box></geometry>
+        </collision>
+
+        <visual name="deck_mid">
+          <pose>0 0 0.92 0 0 0</pose>
+          <geometry><box><size>2.3 0.65 0.06</size></box></geometry>
+          <material><ambient>0.45 0.50 0.55 1</ambient><diffuse>0.45 0.50 0.55 1</diffuse></material>
+        </visual>
+        <collision name="deck_mid_collision">
+          <pose>0 0 0.92 0 0 0</pose>
+          <geometry><box><size>2.3 0.65 0.06</size></box></geometry>
+        </collision>
+
+        <visual name="deck_top">
+          <pose>0 0 1.42 0 0 0</pose>
+          <geometry><box><size>2.3 0.65 0.06</size></box></geometry>
+          <material><ambient>0.45 0.50 0.55 1</ambient><diffuse>0.45 0.50 0.55 1</diffuse></material>
+        </visual>
+        <collision name="deck_top_collision">
+          <pose>0 0 1.42 0 0 0</pose>
+          <geometry><box><size>2.3 0.65 0.06</size></box></geometry>
+        </collision>
+      </link>
+    </model>
+
+    <!-- Matching rack row A segment, farther along the row -->
+    <model name="rack_left_back">
+      <static>true</static>
+      <pose>0 2.5 0 0 0 0</pose>
+      <link name="rack_frame">
+        <visual name="upright_left">
+          <pose>-1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+          <material><ambient>0.12 0.22 0.32 1</ambient><diffuse>0.12 0.22 0.32 1</diffuse></material>
+        </visual>
+        <collision name="upright_left_collision">
+          <pose>-1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+        </collision>
+        <visual name="upright_right">
+          <pose>1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+          <material><ambient>0.12 0.22 0.32 1</ambient><diffuse>0.12 0.22 0.32 1</diffuse></material>
+        </visual>
+        <collision name="upright_right_collision">
+          <pose>1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+        </collision>
+        <visual name="beam_low">
+          <pose>0 0 0.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+          <material><ambient>0.85 0.35 0.08 1</ambient><diffuse>0.85 0.35 0.08 1</diffuse></material>
+        </visual>
+        <collision name="beam_low_collision">
+          <pose>0 0 0.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+        </collision>
+        <visual name="beam_mid">
+          <pose>0 0 0.85 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+          <material><ambient>0.85 0.35 0.08 1</ambient><diffuse>0.85 0.35 0.08 1</diffuse></material>
+        </visual>
+        <collision name="beam_mid_collision">
+          <pose>0 0 0.85 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+        </collision>
+        <visual name="beam_top">
+          <pose>0 0 1.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+          <material><ambient>0.85 0.35 0.08 1</ambient><diffuse>0.85 0.35 0.08 1</diffuse></material>
+        </visual>
+        <collision name="beam_top_collision">
+          <pose>0 0 1.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+        </collision>
+      </link>
+    </model>
+
+    <!-- Parallel rack row B -->
+    <model name="rack_right_front">
+      <static>true</static>
+      <pose>-3 -2.5 0 0 0 0</pose>
+      <link name="rack_frame">
+        <visual name="upright_left">
+          <pose>-1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+          <material><ambient>0.12 0.22 0.32 1</ambient><diffuse>0.12 0.22 0.32 1</diffuse></material>
+        </visual>
+        <collision name="upright_left_collision">
+          <pose>-1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+        </collision>
+        <visual name="upright_right">
+          <pose>1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+          <material><ambient>0.12 0.22 0.32 1</ambient><diffuse>0.12 0.22 0.32 1</diffuse></material>
+        </visual>
+        <collision name="upright_right_collision">
+          <pose>1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+        </collision>
+        <visual name="beam_low">
+          <pose>0 0 0.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+          <material><ambient>0.85 0.35 0.08 1</ambient><diffuse>0.85 0.35 0.08 1</diffuse></material>
+        </visual>
+        <collision name="beam_low_collision">
+          <pose>0 0 0.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+        </collision>
+        <visual name="beam_mid">
+          <pose>0 0 0.85 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+          <material><ambient>0.85 0.35 0.08 1</ambient><diffuse>0.85 0.35 0.08 1</diffuse></material>
+        </visual>
+        <collision name="beam_mid_collision">
+          <pose>0 0 0.85 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+        </collision>
+        <visual name="beam_top">
+          <pose>0 0 1.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+          <material><ambient>0.85 0.35 0.08 1</ambient><diffuse>0.85 0.35 0.08 1</diffuse></material>
+        </visual>
+        <collision name="beam_top_collision">
+          <pose>0 0 1.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+        </collision>
+      </link>
+    </model>
+
+    <model name="rack_right_back">
+      <static>true</static>
+      <pose>0 -2.5 0 0 0 0</pose>
+      <link name="rack_frame">
+        <visual name="upright_left">
+          <pose>-1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+          <material><ambient>0.12 0.22 0.32 1</ambient><diffuse>0.12 0.22 0.32 1</diffuse></material>
+        </visual>
+        <collision name="upright_left_collision">
+          <pose>-1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+        </collision>
+        <visual name="upright_right">
+          <pose>1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+          <material><ambient>0.12 0.22 0.32 1</ambient><diffuse>0.12 0.22 0.32 1</diffuse></material>
+        </visual>
+        <collision name="upright_right_collision">
+          <pose>1.15 0 0.8 0 0 0</pose>
+          <geometry><box><size>0.10 0.10 1.6</size></box></geometry>
+        </collision>
+        <visual name="beam_low">
+          <pose>0 0 0.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+          <material><ambient>0.85 0.35 0.08 1</ambient><diffuse>0.85 0.35 0.08 1</diffuse></material>
+        </visual>
+        <collision name="beam_low_collision">
+          <pose>0 0 0.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+        </collision>
+        <visual name="beam_mid">
+          <pose>0 0 0.85 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+          <material><ambient>0.85 0.35 0.08 1</ambient><diffuse>0.85 0.35 0.08 1</diffuse></material>
+        </visual>
+        <collision name="beam_mid_collision">
+          <pose>0 0 0.85 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+        </collision>
+        <visual name="beam_top">
+          <pose>0 0 1.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+          <material><ambient>0.85 0.35 0.08 1</ambient><diffuse>0.85 0.35 0.08 1</diffuse></material>
+        </visual>
+        <collision name="beam_top_collision">
+          <pose>0 0 1.35 0 0 0</pose>
+          <geometry><box><size>2.4 0.12 0.10</size></box></geometry>
+        </collision>
+      </link>
+    </model>
+</world>
+</sdf>
+
+    <model name="rack_right_back">
+      <static>true</static>
+      <pose>3 -2.5 0.8 0 0 0</pose>
+      <link name="rack">
+        <collision name="collision">
+          <geometry><box><size>2.5 0.7 1.6</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>2.5 0.7 1.6</size></box></geometry>
+          <material>
+            <ambient>0.15 0.35 0.65 1</ambient>
+            <diffuse>0.15 0.35 0.65 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
