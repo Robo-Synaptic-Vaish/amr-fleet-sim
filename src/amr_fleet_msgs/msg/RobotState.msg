@@ -1,0 +1,9 @@
+string robot_id
+float64 position_x
+float64 position_y
+float64 heading
+float64 linear_velocity
+float64 angular_velocity
+string status
+string current_task
+builtin_interfaces/Time timestamp

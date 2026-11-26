@@ -35,8 +35,9 @@ install(
 install(
   PROGRAMS
     scripts/dual_amr_controller.py
+    scripts/fleet_monitor.py
+    scripts/fleet_state_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
-
 ament_package()
 
