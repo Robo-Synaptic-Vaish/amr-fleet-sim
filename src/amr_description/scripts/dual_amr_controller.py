@@ -5,12 +5,6 @@ Dual AMR Keyboard Teleoperation Controller (Phase 2)
 A clean, beginner-friendly ROS 2 node to control two autonomous mobile robots
 (AMR 1 and AMR 2) in Gazebo warehouse simulation.
 
-Supports:
-  1. AMR 1 independent control (WASD)
-  2. AMR 2 independent control (Arrow Keys)
-  3. Synchronized fleet control for both AMRs simultaneously (IKJL)
-  4. Emergency stopping and safe shutdown (Space, X, Q)
-
 KEY MAPPINGS:
   AMR 1 (Individual):
     [W] Forward
@@ -55,7 +49,7 @@ from geometry_msgs.msg import Twist
 # Configurable default parameters
 DEFAULT_LINEAR_SPEED = 0.3       # Forward/backward velocity in m/s
 DEFAULT_ANGULAR_SPEED = 0.5      # Turning velocity in rad/s
-DEFAULT_INACTIVITY_TIMEOUT = 0.5 # Seconds without keypress before auto-stopping
+DEFAULT_INACTIVITY_TIMEOUT = 0.8 # Seconds without keypress before auto-stopping
 COMMAND_PUBLISH_RATE = 10.0      # Hz (10 velocity updates per second)
 
 
@@ -96,6 +90,7 @@ class DualAmrTeleopController(Node):
         # Human-readable status strings for the terminal display
         self.amr1_status = "STOPPED"
         self.amr2_status = "STOPPED"
+        self.last_key_label = "NONE"
 
         # -------------------------------------------------------------
         # 10 Hz Periodic Timer
@@ -121,6 +116,10 @@ class DualAmrTeleopController(Node):
             self.amr2_status = "STOPPED"
             self.amr2_active = False
 
+        # If both are stopped, clear last key label
+        if not self.amr1_active and not self.amr2_active:
+            self.last_key_label = "NONE"
+
         # Publish current command state to each robot's topic
         self.amr1_pub.publish(self.amr1_cmd)
         self.amr2_pub.publish(self.amr2_cmd)
@@ -135,6 +134,7 @@ class DualAmrTeleopController(Node):
         self.amr1_status = f"FORWARD (+{self.linear_speed:.2f} m/s)"
         self.last_amr1_time = time.time()
         self.amr1_active = True
+        self.last_key_label = "W"
 
     def amr1_backward(self):
         msg = Twist()
@@ -143,6 +143,7 @@ class DualAmrTeleopController(Node):
         self.amr1_status = f"BACKWARD (-{self.linear_speed:.2f} m/s)"
         self.last_amr1_time = time.time()
         self.amr1_active = True
+        self.last_key_label = "S"
 
     def amr1_turn_left(self):
         msg = Twist()
@@ -151,6 +152,7 @@ class DualAmrTeleopController(Node):
         self.amr1_status = f"ROTATING CCW (+{self.angular_speed:.2f} rad/s)"
         self.last_amr1_time = time.time()
         self.amr1_active = True
+        self.last_key_label = "A"
 
     def amr1_turn_right(self):
         msg = Twist()
@@ -159,6 +161,7 @@ class DualAmrTeleopController(Node):
         self.amr1_status = f"ROTATING CW (-{self.angular_speed:.2f} rad/s)"
         self.last_amr1_time = time.time()
         self.amr1_active = True
+        self.last_key_label = "D"
 
     def amr1_stop(self):
         self.amr1_cmd = Twist()
@@ -175,6 +178,7 @@ class DualAmrTeleopController(Node):
         self.amr2_status = f"FORWARD (+{self.linear_speed:.2f} m/s)"
         self.last_amr2_time = time.time()
         self.amr2_active = True
+        self.last_key_label = "UP ARROW"
 
     def amr2_backward(self):
         msg = Twist()
@@ -183,6 +187,7 @@ class DualAmrTeleopController(Node):
         self.amr2_status = f"BACKWARD (-{self.linear_speed:.2f} m/s)"
         self.last_amr2_time = time.time()
         self.amr2_active = True
+        self.last_key_label = "DOWN ARROW"
 
     def amr2_turn_left(self):
         msg = Twist()
@@ -191,6 +196,7 @@ class DualAmrTeleopController(Node):
         self.amr2_status = f"ROTATING CCW (+{self.angular_speed:.2f} rad/s)"
         self.last_amr2_time = time.time()
         self.amr2_active = True
+        self.last_key_label = "LEFT ARROW"
 
     def amr2_turn_right(self):
         msg = Twist()
@@ -199,6 +205,7 @@ class DualAmrTeleopController(Node):
         self.amr2_status = f"ROTATING CW (-{self.angular_speed:.2f} rad/s)"
         self.last_amr2_time = time.time()
         self.amr2_active = True
+        self.last_key_label = "RIGHT ARROW"
 
     def amr2_stop(self):
         self.amr2_cmd = Twist()
@@ -212,21 +219,25 @@ class DualAmrTeleopController(Node):
         """Move both AMRs forward at the same speed."""
         self.amr1_forward()
         self.amr2_forward()
+        self.last_key_label = "I (BOTH FWD)"
 
     def both_backward(self):
         """Move both AMRs backward at the same speed."""
         self.amr1_backward()
         self.amr2_backward()
+        self.last_key_label = "K (BOTH BACK)"
 
     def both_turn_left(self):
         """Rotate both AMRs counter-clockwise at the same speed."""
         self.amr1_turn_left()
         self.amr2_turn_left()
+        self.last_key_label = "J (BOTH CCW)"
 
     def both_turn_right(self):
         """Rotate both AMRs clockwise at the same speed."""
         self.amr1_turn_right()
         self.amr2_turn_right()
+        self.last_key_label = "L (BOTH CW)"
 
     # -----------------------------------------------------------------
     # Global Controls (Stop Both)
@@ -235,6 +246,7 @@ class DualAmrTeleopController(Node):
         """Immediately halts both robots with a burst of zero velocities."""
         self.amr1_stop()
         self.amr2_stop()
+        self.last_key_label = "STOP"
         zero = Twist()
         for _ in range(5):
             self.amr1_pub.publish(zero)
@@ -242,90 +254,87 @@ class DualAmrTeleopController(Node):
             time.sleep(0.01)
 
 
-def get_key(timeout=0.05):
+def get_key(fd, timeout=0.05):
     """
-    Non-blocking / timeout-based key reader using standard Python select.
-    Correctly recognizes single keys (WASD, IKJL, Space, X, Q) and multi-byte
-    ANSI/VT100 escape sequences for arrow keys.
+    Direct OS-level key reader using select and os.read on file descriptor.
+    Bypasses Python TextIOWrapper buffering. Robust against single taps,
+    fast typing, and multi-byte escape sequences for arrow keys.
     """
-    rlist, _, _ = select.select([sys.stdin], [], [], timeout)
+    rlist, _, _ = select.select([fd], [], [], timeout)
     if not rlist:
         return None
 
     try:
-        ch = sys.stdin.read(1)
+        data = os.read(fd, 1024)
     except Exception:
         return None
 
-    # Handle Escape Sequences (Arrow keys send \x1b[A, \x1b[B, etc.)
-    if ch == '\x1b':
-        rlist, _, _ = select.select([sys.stdin], [], [], 0.05)
-        if rlist:
-            ch2 = sys.stdin.read(1)
-            if ch2 in ['[', 'O']:
-                rlist, _, _ = select.select([sys.stdin], [], [], 0.05)
-                if rlist:
-                    ch3 = sys.stdin.read(1)
-                    if ch3 == 'A':
-                        return 'UP'
-                    elif ch3 == 'B':
-                        return 'DOWN'
-                    elif ch3 == 'C':
-                        return 'RIGHT'
-                    elif ch3 == 'D':
-                        return 'LEFT'
-        return 'ESC'
+    if not data:
+        return None
 
-    # Normalize AMR 1 keys (WASD)
-    if ch in ['w', 'W']:
-        return 'W'
-    elif ch in ['s', 'S']:
-        return 'S'
-    elif ch in ['a', 'A']:
-        return 'A'
-    elif ch in ['d', 'D']:
-        return 'D'
+    # Arrow keys in ANSI/VT100 send \x1b[A, \x1b[B, \x1b[C, \x1b[D
+    # or \x1bOA, \x1bOB, \x1bOC, \x1bOD
+    if b'\x1b[A' in data or b'\x1bOA' in data:
+        return 'UP'
+    elif b'\x1b[B' in data or b'\x1bOB' in data:
+        return 'DOWN'
+    elif b'\x1b[C' in data or b'\x1bOC' in data:
+        return 'RIGHT'
+    elif b'\x1b[D' in data or b'\x1bOD' in data:
+        return 'LEFT'
 
-    # Normalize Synchronized Fleet keys (IKJL)
-    elif ch in ['i', 'I']:
-        return 'I'
-    elif ch in ['k', 'K']:
-        return 'K'
-    elif ch in ['j', 'J']:
-        return 'J'
-    elif ch in ['l', 'L']:
-        return 'L'
-
-    # Normalize Safety and Exit keys
-    elif ch == ' ':
-        return 'SPACE'
-    elif ch in ['x', 'X']:
-        return 'X'
-    elif ch in ['q', 'Q']:
-        return 'Q'
-    elif ch == '\x03':  # Ctrl+C
+    # Check for Ctrl+C (\x03)
+    if b'\x03' in data:
         return 'CTRL_C'
 
-    return ch
+    # Check for Space (' ')
+    if b' ' in data:
+        return 'SPACE'
+
+    # Letters (case-insensitive check across received byte chunk)
+    data_lower = data.lower()
+    if b'w' in data_lower:
+        return 'W'
+    elif b's' in data_lower:
+        return 'S'
+    elif b'a' in data_lower:
+        return 'A'
+    elif b'd' in data_lower:
+        return 'D'
+    elif b'i' in data_lower:
+        return 'I'
+    elif b'k' in data_lower:
+        return 'K'
+    elif b'j' in data_lower:
+        return 'J'
+    elif b'l' in data_lower:
+        return 'L'
+    elif b'x' in data_lower:
+        return 'X'
+    elif b'q' in data_lower:
+        return 'Q'
+
+    return None
 
 
 def print_control_guide():
-    """Prints the static teleoperation guide banner."""
-    print("=" * 70)
-    print("        DUAL-AMR KEYBOARD TELEOP CONTROLLER (PHASE 2)")
-    print("=" * 70)
+    """Prints the teleoperation guide banner."""
+    print("=" * 72)
+    print("         DUAL-AMR KEYBOARD TELEOP CONTROLLER (PHASE 2)")
+    print("=" * 72)
     print("  AMR 1 (Individual):     AMR 2 (Individual):     BOTH AMRs (Fleet):")
     print("    [W] Forward             [↑ Up]    Forward       [I] Both Forward")
     print("    [S] Backward            [↓ Down]  Backward      [K] Both Backward")
     print("    [A] Rotate Left (CCW)   [← Left]  Rotate Left   [J] Both Rotate Left")
     print("    [D] Rotate Right (CW)   [→ Right] Rotate Right  [L] Both Rotate Right")
-    print("-" * 70)
+    print("-" * 72)
     print("  SAFETY & EXIT COMMANDS:")
     print("    [SPACE] or [X] : Emergency Stop BOTH robots immediately")
     print("    [Q]            : Stop both robots, restore terminal, and Quit")
-    print("=" * 70)
-    print("  Hold key to drive. Release to stop (0.5s inactivity timeout).")
-    print("=" * 70)
+    print("=" * 72)
+    print("  NOTE: Keep focus on THIS terminal window when pressing keys.")
+    print("  Hold key to drive. Release to stop (0.8s inactivity timeout).")
+    print("=" * 72)
 
 
 def main(args=None):
@@ -344,7 +353,7 @@ def main(args=None):
         except Exception:
             pass
 
-    # Register exit handler to ensure terminal is NEVER left in raw/cbreak mode
+    # Register exit handler to ensure terminal is NEVER left in cbreak mode
     atexit.register(restore_terminal)
 
     # Initialize ROS 2
@@ -364,7 +373,7 @@ def main(args=None):
 
     try:
         while rclpy.ok():
-            key = get_key(timeout=0.05)
+            key = get_key(fd, timeout=0.05)
 
             # AMR 1 Individual Control
             if key == 'W':
@@ -406,7 +415,8 @@ def main(args=None):
 
             # Update the dynamic status line in-place using \r
             status_line = (
-                f"\r  [STATUS] AMR1: {controller.amr1_status:<22} | "
+                f"\r  [KEY: {controller.last_key_label:<13}] "
+                f"AMR1: {controller.amr1_status:<22} | "
                 f"AMR2: {controller.amr2_status:<22}"
             )
             if status_line != last_status_display:
