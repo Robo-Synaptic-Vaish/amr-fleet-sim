@@ -31,5 +31,12 @@ install(
     worlds
   DESTINATION share/${PROJECT_NAME}
 )
+
+install(
+  PROGRAMS
+    scripts/dual_amr_controller.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 ament_package()
 

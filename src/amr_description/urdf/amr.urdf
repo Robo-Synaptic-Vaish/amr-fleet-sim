@@ -96,8 +96,6 @@
       <right_joint>right_wheel_joint</right_joint>
       <wheel_separation>0.68</wheel_separation>
       <wheel_radius>0.15</wheel_radius>
-      <topic>/cmd_vel</topic>
-      <odom_topic>/model/amr/odometry</odom_topic>
       <frame_id>odom</frame_id>
       <child_frame_id>base_link</child_frame_id>
     </plugin>
