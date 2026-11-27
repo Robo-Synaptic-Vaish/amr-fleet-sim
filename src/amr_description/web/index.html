@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AMR Fleet Coordination & Safety Dashboard | ROS 2 Jazzy</title>
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --card-bg: #121826;
+      --card-border: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --amr1-cyan: #06b6d4;
+      --amr1-glow: rgba(6, 182, 212, 0.25);
+      --amr2-amber: #f59e0b;
+      --amr2-glow: rgba(245, 158, 11, 0.25);
+      --safe-green: #10b981;
+      --warn-yellow: #eab308;
+      --danger-red: #ef4444;
+      --purple-accent: #8b5cf6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Bar */
+    header {
+      background-color: var(--card-bg);
+      border-bottom: 1px solid var(--card-border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--amr1-cyan), var(--purple-accent));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #fff;
+      font-size: 16px;
+    }
+
+    .brand-title h1 {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-title p {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .conn-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      padding: 5px 12px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 20px;
+      color: var(--safe-green);
+    }
+
+    .conn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--safe-green);
+      box-shadow: 0 0 8px var(--safe-green);
+      animation: pulse 2s infinite;
+    }
+
+    .estop-btn {
+      background-color: var(--danger-red);
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      font-weight: 700;
+      font-size: 13px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+    }
+
+    .estop-btn:hover {
+      background-color: #dc2626;
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.6);
+    }
+
+    .estop-btn.active {
+      background-color: #7f1d1d;
+      border: 1px solid var(--danger-red);
+      animation: blink-border 1s infinite;
+    }
+
+    /* Main Container Grid */
+    main {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 18px;
+      flex: 1;
+    }
+
+    @media (max-width: 1200px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Left Column: Map & Status Cards */
+    .left-col {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* Coordination Banner */
+    .coord-banner {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(90deg, rgba(30, 41, 59, 0.6) 0%, rgba(18, 24, 38, 0.9) 100%);
+    }
+
+    .coord-info h2 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .coord-status-text {
+      font-size: 18px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .coord-metrics {
+      display: flex;
+      gap: 24px;
+    }
+
+    .metric-pill {
+      text-align: right;
+    }
+
+    .metric-pill .label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .metric-pill .value {
+      font-size: 20px;
+      font-weight: 800;
+      font-family: monospace;
+    }
+
+    /* Warehouse Map Card */
+    .map-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .card-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      background-color: #0d131f;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .map-legend {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    /* Dual Robot Status Cards */
+    .robots-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    @media (max-width: 768px) {
+      .robots-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .robot-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .robot-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+
+    .robot-card.amr1::before {
+      background: var(--amr1-cyan);
+      box-shadow: 0 0 10px var(--amr1-cyan);
+    }
+
+    .robot-card.amr2::before {
+      background: var(--amr2-amber);
+      box-shadow: 0 0 10px var(--amr2-amber);
+    }
+
+    .robot-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .robot-id-tag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .robot-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .amr1 .robot-badge {
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--amr1-cyan);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    .amr2 .robot-badge {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--amr2-amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .status-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-online {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--safe-green);
+    }
+
+    .status-stale {
+      background: rgba(234, 179, 8, 0.15);
+      color: var(--warn-yellow);
+    }
+
+    .status-offline {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger-red);
+    }
+
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .data-box {
+      background: #0f1523;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 8px;
+    }
+
+    .data-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .data-val {
+      font-size: 13px;
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    .intervention-banner {
+      margin-top: 12px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0b111e;
+      border: 1px solid #1e293b;
+    }
+
+    /* Right Column: Events & System Diagnostics */
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .panel-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Event Feed */
+    .event-feed {
+      flex: 1;
+      min-height: 280px;
+      max-height: 380px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-right: 4px;
+    }
+
+    .event-feed::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .event-feed::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+
+    .event-item {
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: #0b111e;
+      border-left: 3px solid #64748b;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .event-item.info { border-left-color: var(--amr1-cyan); }
+    .event-item.warn { border-left-color: var(--warn-yellow); background: rgba(234, 179, 8, 0.05); }
+    .event-item.critical { border-left-color: var(--danger-red); background: rgba(239, 68, 68, 0.05); }
+    .event-item.success { border-left-color: var(--safe-green); }
+
+    .event-header {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    .event-msg {
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    /* System Diagnostics Stats */
+    .diag-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .diag-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .diag-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .diag-label {
+      color: var(--text-muted);
+    }
+
+    .diag-val {
+      font-weight: 600;
+      font-family: monospace;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+
+    @keyframes blink-border {
+      0%, 100% { border-color: var(--danger-red); }
+      50% { border-color: transparent; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">AG</div>
+      <div class="brand-title">
+        <h1>DECENTRALIZED AMR FLEET COORDINATION</h1>
+        <p>ROS 2 Jazzy & Gazebo Harmonic Warehouse Simulation</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="conn-badge">
+        <div class="conn-dot" id="live-dot"></div>
+        <span id="live-status">ROS 2 CONNECTED</span>
+      </div>
+      <button class="estop-btn" id="estop-toggle" onclick="toggleEmergencyStop()">
+        <span id="estop-icon">🛑</span>
+        <span id="estop-text">EMERGENCY STOP</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Left Column: Map & Status -->
+    <div class="left-col">
+
+      <!-- Dynamic Coordination HUD -->
+      <div class="coord-banner">
+        <div class="coord-info">
+          <h2>FLEET COORDINATION STATUS</h2>
+          <div class="coord-status-text" id="coord-status">
+            <span id="coord-dot" style="color: var(--safe-green);">●</span>
+            <span id="coord-message">NORMAL NAVIGATION</span>
+          </div>
+        </div>
+        <div class="coord-metrics">
+          <div class="metric-pill">
+            <div class="label">INTER-ROBOT DISTANCE</div>
+            <div class="value" id="hud-distance" style="color: var(--safe-green);">-- m</div>
+          </div>
+          <div class="metric-pill">
+            <div class="label">COLLISION RISK</div>
+            <div class="value" id="hud-risk" style="color: var(--safe-green);">LOW</div>
+          </div>
+          <div class="metric-pill">
+            <div class="label">SAFETY INTERVENTION</div>
+            <div class="value" id="hud-intervention" style="color: var(--safe-green);">ALLOWED</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Warehouse 2D Map -->
+      <div class="map-card">
+        <div class="card-header">
+          <h3><span>🗺️</span> LIVE 2D WAREHOUSE TOP-DOWN TRACKER</h3>
+          <span style="font-size: 11px; color: var(--text-muted);">Bounds: 16m × 12m (Scale 1:1)</span>
+        </div>
+        <div class="canvas-container">
+          <canvas id="warehouseCanvas" width="900" height="400"></canvas>
+        </div>
+        <div class="map-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background: var(--amr1-cyan);"></div>
+            <span>AMR 01 (amr)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background: var(--amr2-amber);"></div>
+            <span>AMR 02 (amr2)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background: #334155;"></div>
+            <span>Storage Racks</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background: rgba(16, 185, 129, 0.4);"></div>
+            <span>Distance Vector</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dual Robot Status Cards -->
+      <div class="robots-grid">
+
+        <!-- AMR 01 Card -->
+        <div class="robot-card amr1">
+          <div class="robot-card-top">
+            <div class="robot-id-tag">
+              <span class="robot-badge">AMR 01</span>
+              <strong style="font-size: 14px;">/model/amr</strong>
+            </div>
+            <div class="status-badge status-online" id="amr1-badge">
+              <span>●</span> <span id="amr1-conn">ONLINE</span>
+            </div>
+          </div>
+          <div class="data-grid">
+            <div class="data-box">
+              <div class="data-label">Position X</div>
+              <div class="data-val" id="amr1-x">--</div>
+            </div>
+            <div class="data-box">
+              <div class="data-label">Position Y</div>
+              <div class="data-val" id="amr1-y">--</div>
+            </div>
+            <div class="data-box">
+              <div class="data-label">Heading</div>
+              <div class="data-val" id="amr1-heading">--</div>
+            </div>
+            <div class="data-box">
+              <div class="data-label">Linear Vel</div>
+              <div class="data-val" id="amr1-lin">0.00 m/s</div>
+            </div>
+            <div class="data-box">
+              <div class="data-label">Angular Vel</div>
+              <div class="data-val" id="amr1-ang">0.00 rad/s</div>
+            </div>
+            <div class="data-box">
+              <div class="data-label">State</div>
+              <div class="data-val" id="amr1-status">IDLE</div>
+            </div>
+          </div>
+          <div class="intervention-banner">
+            <span style="color: var(--text-muted);">Priority Role:</span>
+            <strong style="color: var(--amr1-cyan);">PRIORITY 1 (RIGHT-OF-WAY)</strong>
+          </div>
+          <div class="intervention-banner" style="margin-top: 6px;">
+            <span style="color: var(--text-muted);">Current Task:</span>
+            <strong id="amr1-task" style="color: var(--text-main);">UNASSIGNED</strong>
+          </div>
+          <div class="intervention-banner" style="margin-top: 6px;">
+            <span style="color: var(--text-muted);">Gate Decision:</span>
+            <strong id="amr1-gate" style="color: var(--safe-green);">PROCEED (ALLOWED)</strong>
+          </div>
+        </div>
+
+        <!-- AMR 02 Card -->
+        <div class="robot-card amr2">
+          <div class="robot-card-top">
+            <div class="robot-id-tag">
+              <span class="robot-badge">AMR 02</span>
+              <strong style="font-size: 14px;">/model/amr2</strong>
+            </div>
+            <div class="status-badge status-online" id="amr2-badge">
+              <span>●</span> <span id="amr2-conn">ONLINE</span>
+            </div>
+          </div>
+          <div class="data-grid">
+            <div class="data-box">
+              <div class="data-label">Position X</div>
+              <div class="data-val" id="amr2-x">--</div>
+            </div>
+            <div class="data-box">
+              <div class="data-label">Position Y</div>
+              <div class="data-val" id="amr2-y">--</div>
+            </div>
+            <div class="data-box">
+              <div class="data-label">Heading</div>
+              <div class="data-val" id="amr2-heading">--</div>
+            </div>
+            <div class="data-box">
+              <div class="data-label">Linear Vel</div>
+              <div class="data-val" id="amr2-lin">0.00 m/s</div>
+            </div>
+            <div class="data-box">
+              <div class="data-label">Angular Vel</div>
+              <div class="data-val" id="amr2-ang">0.00 rad/s</div>
+            </div>
+            <div class="data-box">
+              <div class="data-label">State</div>
+              <div class="data-val" id="amr2-status">IDLE</div>
+            </div>
+          </div>
+          <div class="intervention-banner">
+            <span style="color: var(--text-muted);">Priority Role:</span>
+            <strong style="color: var(--amr2-amber);">PRIORITY 2 (YIELDING)</strong>
+          </div>
+          <div class="intervention-banner" style="margin-top: 6px;">
+            <span style="color: var(--text-muted);">Current Task:</span>
+            <strong id="amr2-task" style="color: var(--text-main);">UNASSIGNED</strong>
+          </div>
+          <div class="intervention-banner" style="margin-top: 6px;">
+            <span style="color: var(--text-muted);">Gate Decision:</span>
+            <strong id="amr2-gate" style="color: var(--safe-green);">PROCEED (ALLOWED)</strong>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Right Column: Events & System Diagnostics -->
+    <div class="right-col">
+
+      <!-- Safety Controls & Status -->
+      <div class="panel-card">
+        <div class="card-header">
+          <h3><span>🛡️</span> SAFETY CONTROLLER</h3>
+        </div>
+        <div class="diag-list">
+          <div class="diag-row">
+            <span class="diag-label">Master E-Stop</span>
+            <span class="diag-val" id="diag-estop" style="color: var(--safe-green);">STANDBY (CLEAR)</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-label">Safety Override Gate</span>
+            <span class="diag-val" id="diag-override">INACTIVE</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-label">Comm Fail-Safe</span>
+            <span class="diag-val" style="color: var(--safe-green);">ACTIVE (1.5s timeout)</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-label">Conflict Proximity Gate</span>
+            <span class="diag-val" id="diag-proxgate">1.35m STOP / 2.0m SLOW</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Communication Link Diagnostics -->
+      <div class="panel-card">
+        <div class="card-header">
+          <h3><span>📡</span> COMMUNICATION LINK</h3>
+        </div>
+        <div class="diag-list">
+          <div class="diag-row">
+            <span class="diag-label">Shared Mesh Topic</span>
+            <span class="diag-val">/fleet/robot_states</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-label">Broadcast Rate</span>
+            <span class="diag-val">5.0 Hz</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-label">AMR 01 Freshness</span>
+            <span class="diag-val" id="diag-amr1-age">-- ms</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-label">AMR 02 Freshness</span>
+            <span class="diag-val" id="diag-amr2-age">-- ms</span>
+          </div>
+          <div class="diag-row">
+            <span class="diag-label">Inter-Fleet Link</span>
+            <span class="diag-val" id="diag-link-status" style="color: var(--safe-green);">SYNCHRONIZED</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Event Feed -->
+      <div class="panel-card" style="flex: 1;">
+        <div class="card-header">
+          <h3><span>📜</span> REAL-TIME EVENT FEED</h3>
+          <span style="font-size: 11px; color: var(--text-muted);" id="event-count">0 events</span>
+        </div>
+        <div class="event-feed" id="event-feed-container">
+          <div class="event-item info">
+            <div class="event-header">
+              <span>SYSTEM INIT</span>
+              <span>NOW</span>
+            </div>
+            <div class="event-msg">Connecting to ROS 2 teleoperation and safety bridge...</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // -------------------------------------------------------------
+    // Canvas & Real Warehouse Coordinates Mapping
+    // -------------------------------------------------------------
+    // Real Warehouse in warehouse.sdf:
+    // Floor size: 16m x 12m. Range: X in [-8, 8], Y in [-6, 6]
+    // 4 Racks at (+-3, +-2.5) with length 2.4m along X, depth 0.7m along Y
+    const canvas = document.getElementById('warehouseCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const WAREHOUSE_WIDTH = 16.0;   // meters (X: -8 to +8)
+    const WAREHOUSE_HEIGHT = 12.0;  // meters (Y: -6 to +6)
+
+    // Breadcrumb trails
+    const amr1Trail = [];
+    const amr2Trail = [];
+    const MAX_TRAIL = 40;
+
+    let estopState = false;
+
+    // Convert real warehouse meters to canvas pixels
+    function toCanvasX(x) {
+      return ((x + 8.0) / WAREHOUSE_WIDTH) * canvas.width;
+    }
+    function toCanvasY(y) {
+      // Invert Y so positive is up
+      return ((-y + 6.0) / WAREHOUSE_HEIGHT) * canvas.height;
+    }
+    function toCanvasDist(m) {
+      return (m / WAREHOUSE_WIDTH) * canvas.width;
+    }
+
+    // Storage Rack Definitions from warehouse.sdf
+    const racks = [
+      { name: "RACK LF", x: -3.0, y: 2.5, w: 2.4, h: 0.7 },
+      { name: "RACK LB", x: 3.0, y: 2.5, w: 2.4, h: 0.7 },
+      { name: "RACK RF", x: -3.0, y: -2.5, w: 2.4, h: 0.7 },
+      { name: "RACK RB", x: 3.0, y: -2.5, w: 2.4, h: 0.7 }
+    ];
+
+    function drawWarehouse(data) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. Gridlines (1-meter intervals)
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+      ctx.lineWidth = 1;
+      for (let x = -8; x <= 8; x += 1) {
+        ctx.beginPath();
+        ctx.moveTo(toCanvasX(x), 0);
+        ctx.lineTo(toCanvasX(x), canvas.height);
+        ctx.stroke();
+      }
+      for (let y = -6; y <= 6; y += 1) {
+        ctx.beginPath();
+        ctx.moveTo(0, toCanvasY(y));
+        ctx.lineTo(canvas.width, toCanvasY(y));
+        ctx.stroke();
+      }
+
+      // 2. Warehouse Wall Outer Boundary
+      ctx.strokeStyle = "#334155";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(toCanvasX(-7.8), toCanvasY(5.8), toCanvasDist(15.6), toCanvasDist(11.6));
+
+      // Central Aisle Centerline
+      ctx.setLineDash([4, 6]);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+      ctx.beginPath();
+      ctx.moveTo(toCanvasX(-8), toCanvasY(0));
+      ctx.lineTo(toCanvasX(8), toCanvasY(0));
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 3. Draw Racks
+      racks.forEach(rack => {
+        const rx = toCanvasX(rack.x - rack.w / 2);
+        const ry = toCanvasY(rack.y + rack.h / 2);
+        const rw = toCanvasDist(rack.w);
+        const rh = toCanvasDist(rack.h);
+
+        ctx.fillStyle = "rgba(30, 41, 59, 0.85)";
+        ctx.fillRect(rx, ry, rw, rh);
+        ctx.strokeStyle = "#475569";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(rx, ry, rw, rh);
+
+        // Rack Label
+        ctx.fillStyle = "#64748b";
+        ctx.font = "9px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(rack.name, toCanvasX(rack.x), toCanvasY(rack.y) + 3);
+      });
+
+      // 4. Draw Trails
+      drawTrail(amr1Trail, "rgba(6, 182, 212, ");
+      drawTrail(amr2Trail, "rgba(245, 158, 11, ");
+
+      // 5. Draw Inter-Robot Distance Vector
+      if (data && data.amr1 && data.amr2 && data.amr1.online && data.amr2.online) {
+        const x1 = toCanvasX(data.amr1.x);
+        const y1 = toCanvasY(data.amr1.y);
+        const x2 = toCanvasX(data.amr2.x);
+        const y2 = toCanvasY(data.amr2.y);
+
+        let distColor = "#10b981"; // Safe
+        if (data.distance <= 1.35) {
+          distColor = "#ef4444";   // Critical
+        } else if (data.distance <= 2.0) {
+          distColor = "#f59e0b";   // Warning
+        }
+
+        ctx.strokeStyle = distColor;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Distance Tag at vector midpoint
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        ctx.fillStyle = "#0f172a";
+        ctx.strokeStyle = distColor;
+        ctx.lineWidth = 1;
+        ctx.fillRect(midX - 25, midY - 10, 50, 18);
+        ctx.strokeRect(midX - 25, midY - 10, 50, 18);
+        ctx.fillStyle = distColor;
+        ctx.font = "bold 11px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(data.distance.toFixed(2) + "m", midX, midY + 3);
+      }
+
+      // 6. Draw Robot AMR 01
+      if (data && data.amr1) {
+        drawRobot(data.amr1.x, data.amr1.y, data.amr1.heading, "#06b6d4", "AMR 01", data.amr1.online);
+      }
+
+      // 7. Draw Robot AMR 02
+      if (data && data.amr2) {
+        drawRobot(data.amr2.x, data.amr2.y, data.amr2.heading, "#f59e0b", "AMR 02", data.amr2.online, data.coordination_state === "YIELDING");
+      }
+    }
+
+    function drawTrail(trail, colorPrefix) {
+      if (trail.length < 2) return;
+      for (let i = 1; i < trail.length; i++) {
+        const alpha = (i / trail.length) * 0.4;
+        ctx.strokeStyle = colorPrefix + alpha + ")";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(toCanvasX(trail[i - 1].x), toCanvasY(trail[i - 1].y));
+        ctx.lineTo(toCanvasX(trail[i].x), toCanvasY(trail[i].y));
+        ctx.stroke();
+      }
+    }
+
+    function drawRobot(x, y, heading, color, label, isOnline, isYielding) {
+      const cx = toCanvasX(x);
+      const cy = toCanvasY(y);
+      const radius = toCanvasDist(0.42); // Physical robot radius ~ 0.4m
+
+      // Halo if yielding or offline
+      if (isYielding) {
+        ctx.strokeStyle = "rgba(239, 68, 68, 0.6)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * 1.6, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Robot Chassis Circle
+      ctx.fillStyle = isOnline ? color : "#64748b";
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Heading Vector Line (orientation)
+      // Note: canvas Y is inverted, so sin(-heading)
+      const arrowLen = radius * 1.5;
+      const hx = cx + Math.cos(-heading) * arrowLen;
+      const hy = cy + Math.sin(-heading) * arrowLen;
+
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(hx, hy);
+      ctx.stroke();
+
+      // Heading Front Tip Arrow
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(hx, hy, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Label below robot
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "bold 10px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(label, cx, cy + radius + 11);
+    }
+
+    // -------------------------------------------------------------
+    // Live Telemetry EventSource (SSE) Integration
+    // -------------------------------------------------------------
+    function initEventStream() {
+      const evtSource = new EventSource('/stream');
+
+      evtSource.onmessage = function(e) {
+        try {
+          const data = JSON.parse(e.data);
+          updateDashboard(data);
+        } catch (err) {
+          console.error("Failed to parse SSE state:", err);
+        }
+      };
+
+      evtSource.onerror = function() {
+        document.getElementById('live-status').innerText = 'RECONNECTING...';
+        document.getElementById('live-dot').style.backgroundColor = '#f59e0b';
+      };
+
+      evtSource.onopen = function() {
+        document.getElementById('live-status').innerText = 'ROS 2 CONNECTED';
+        document.getElementById('live-dot').style.backgroundColor = '#10b981';
+      };
+    }
+
+    function formatGateStatus(bot) {
+      if (!bot || (!bot.online && !bot.stale)) {
+        return { text: "STANDBY", color: "var(--text-muted)" };
+      }
+      const dec = (bot.decision || "PROCEED").toUpperCase();
+      const gate = (bot.gate_action || "ALLOWED").toUpperCase();
+
+      if (dec === "EMERGENCY_STOP" || (gate === "BLOCKED" && dec !== "YIELD")) {
+        return { text: `EMERGENCY STOP (${gate})`, color: "var(--danger-red)" };
+      }
+      if (dec === "YIELD") {
+        return { text: `YIELD (${gate})`, color: "var(--danger-red)" };
+      }
+      if (dec === "SLOW") {
+        return { text: `SLOW (${gate})`, color: "var(--warn-yellow)" };
+      }
+      if (dec === "COMM_LOSS_SAFE") {
+        return { text: `COMM LOSS / FAILSAFE (${gate})`, color: "var(--warn-yellow)" };
+      }
+      if (dec === "PROCEED") {
+        return { text: `PROCEED (${gate})`, color: "var(--safe-green)" };
+      }
+      return {
+        text: `${dec} (${gate})`,
+        color: gate === "BLOCKED" ? "var(--danger-red)" : (gate === "SCALED" || gate === "LIMITED" ? "var(--warn-yellow)" : "var(--safe-green)")
+      };
+    }
+
+    function updateDashboard(data) {
+      // 1. Update Map Trails
+      if (data.amr1 && data.amr1.online) {
+        amr1Trail.push({ x: data.amr1.x, y: data.amr1.y });
+        if (amr1Trail.length > MAX_TRAIL) amr1Trail.shift();
+      }
+      if (data.amr2 && data.amr2.online) {
+        amr2Trail.push({ x: data.amr2.x, y: data.amr2.y });
+        if (amr2Trail.length > MAX_TRAIL) amr2Trail.shift();
+      }
+      drawWarehouse(data);
+
+      // 2. Coordination HUD
+      const distEl = document.getElementById('hud-distance');
+      const riskEl = document.getElementById('hud-risk');
+      const interEl = document.getElementById('hud-intervention');
+      const msgEl = document.getElementById('coord-message');
+      const dotEl = document.getElementById('coord-dot');
+
+      if (data.distance !== null && data.distance !== undefined) {
+        distEl.innerText = data.distance.toFixed(2) + " m";
+      } else {
+        distEl.innerText = "-- m";
+      }
+
+      riskEl.innerText = data.risk;
+      msgEl.innerText = data.coordination_message || data.coordination_state;
+      interEl.innerText = data.safety_intervention;
+
+      let color = "var(--safe-green)";
+      if (data.risk === "CRITICAL" || data.emergency_stop) color = "var(--danger-red)";
+      else if (data.risk === "WARNING" || data.risk === "MEDIUM") color = "var(--warn-yellow)";
+
+      distEl.style.color = color;
+      riskEl.style.color = color;
+      dotEl.style.color = color;
+      interEl.style.color = color;
+
+      // 3. AMR 01 Card
+      if (data.amr1) {
+        document.getElementById('amr1-x').innerText = (data.amr1.x >= 0 ? "+" : "") + data.amr1.x.toFixed(2) + "m";
+        document.getElementById('amr1-y').innerText = (data.amr1.y >= 0 ? "+" : "") + data.amr1.y.toFixed(2) + "m";
+        const deg1 = (data.amr1.heading * 180 / Math.PI).toFixed(0);
+        document.getElementById('amr1-heading').innerText = deg1 + "°";
+        document.getElementById('amr1-lin').innerText = data.amr1.lin_vel.toFixed(2) + " m/s";
+        document.getElementById('amr1-ang').innerText = data.amr1.ang_vel.toFixed(2) + " rad/s";
+        document.getElementById('amr1-status').innerText = data.amr1.status;
+        
+        const gate1Status = formatGateStatus(data.amr1);
+        const gate1El = document.getElementById('amr1-gate');
+        gate1El.innerText = gate1Status.text;
+        gate1El.style.color = gate1Status.color;
+
+        const task1El = document.getElementById('amr1-task');
+        if (task1El) {
+          task1El.innerText = data.amr1.current_task || "UNASSIGNED";
+        }
+
+        const badge1 = document.getElementById('amr1-badge');
+        const conn1 = document.getElementById('amr1-conn');
+        if (data.amr1.online) {
+          badge1.className = "status-badge status-online";
+          conn1.innerText = "ONLINE";
+        } else if (data.amr1.stale) {
+          badge1.className = "status-badge status-stale";
+          conn1.innerText = "STALE";
+        } else {
+          badge1.className = "status-badge status-offline";
+          conn1.innerText = "OFFLINE";
+        }
+        document.getElementById('diag-amr1-age').innerText = (data.amr1.age_ms || 0) + " ms";
+      }
+
+      // 4. AMR 02 Card
+      if (data.amr2) {
+        document.getElementById('amr2-x').innerText = (data.amr2.x >= 0 ? "+" : "") + data.amr2.x.toFixed(2) + "m";
+        document.getElementById('amr2-y').innerText = (data.amr2.y >= 0 ? "+" : "") + data.amr2.y.toFixed(2) + "m";
+        const deg2 = (data.amr2.heading * 180 / Math.PI).toFixed(0);
+        document.getElementById('amr2-heading').innerText = deg2 + "°";
+        document.getElementById('amr2-lin').innerText = data.amr2.lin_vel.toFixed(2) + " m/s";
+        document.getElementById('amr2-ang').innerText = data.amr2.ang_vel.toFixed(2) + " rad/s";
+        document.getElementById('amr2-status').innerText = data.amr2.status;
+
+        const gate2Status = formatGateStatus(data.amr2);
+        const gate2El = document.getElementById('amr2-gate');
+        gate2El.innerText = gate2Status.text;
+        gate2El.style.color = gate2Status.color;
+
+        const task2El = document.getElementById('amr2-task');
+        if (task2El) {
+          task2El.innerText = data.amr2.current_task || "UNASSIGNED";
+        }
+
+        const badge2 = document.getElementById('amr2-badge');
+        const conn2 = document.getElementById('amr2-conn');
+        if (data.amr2.online) {
+          badge2.className = "status-badge status-online";
+          conn2.innerText = "ONLINE";
+        } else if (data.amr2.stale) {
+          badge2.className = "status-badge status-stale";
+          conn2.innerText = "STALE";
+        } else {
+          badge2.className = "status-badge status-offline";
+          conn2.innerText = "OFFLINE";
+        }
+        document.getElementById('diag-amr2-age').innerText = (data.amr2.age_ms || 0) + " ms";
+      }
+
+      // 5. Diagnostics & E-Stop UI
+      estopState = data.emergency_stop;
+      const estopBtn = document.getElementById('estop-toggle');
+      const estopDiag = document.getElementById('diag-estop');
+      if (estopState) {
+        estopBtn.classList.add('active');
+        document.getElementById('estop-text').innerText = "CLEAR E-STOP (RESET)";
+        estopDiag.innerText = "ACTIVATED (HALTED)";
+        estopDiag.style.color = "var(--danger-red)";
+      } else {
+        estopBtn.classList.remove('active');
+        document.getElementById('estop-text').innerText = "EMERGENCY STOP";
+        estopDiag.innerText = "STANDBY (CLEAR)";
+        estopDiag.style.color = "var(--safe-green)";
+      }
+
+      // 6. Event Feed Updates
+      if (data.events && data.events.length > 0) {
+        const feed = document.getElementById('event-feed-container');
+        document.getElementById('event-count').innerText = data.events.length + " events";
+        feed.innerHTML = data.events.slice().reverse().map(ev => `
+          <div class="event-item ${ev.level}">
+            <div class="event-header">
+              <span>${ev.type} ${ev.robot_id ? `[${ev.robot_id}]` : ''}</span>
+              <span>${ev.time}</span>
+            </div>
+            <div class="event-msg">${ev.message}</div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Real Emergency Stop REST Control
+    // -------------------------------------------------------------
+    function toggleEmergencyStop() {
+      const targetState = !estopState;
+      fetch('/api/estop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: targetState })
+      }).then(res => res.json())
+        .then(res => {
+          console.log("Emergency stop command sent:", res);
+        })
+        .catch(err => {
+          console.error("Failed to send emergency stop:", err);
+        });
+    }
+
+    // Auto-start on load
+    window.addEventListener('load', () => {
+      drawWarehouse(null);
+      initEventStream();
+    });
+  </script>
+</body>
+</html>

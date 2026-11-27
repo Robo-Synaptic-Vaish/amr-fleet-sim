@@ -45,6 +45,7 @@ import tty
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
+from std_msgs.msg import Bool
 
 # Configurable default parameters
 DEFAULT_LINEAR_SPEED = 0.3       # Forward/backward velocity in m/s
@@ -66,16 +67,22 @@ class DualAmrTeleopController(Node):
         self.declare_parameter('linear_speed', DEFAULT_LINEAR_SPEED)
         self.declare_parameter('angular_speed', DEFAULT_ANGULAR_SPEED)
         self.declare_parameter('inactivity_timeout', DEFAULT_INACTIVITY_TIMEOUT)
+        self.declare_parameter('amr1_cmd_topic', '/model/amr/cmd_vel_raw')
+        self.declare_parameter('amr2_cmd_topic', '/model/amr2/cmd_vel_raw')
 
         self.linear_speed = float(self.get_parameter('linear_speed').value)
         self.angular_speed = float(self.get_parameter('angular_speed').value)
         self.inactivity_timeout = float(self.get_parameter('inactivity_timeout').value)
+        self.amr1_cmd_topic = str(self.get_parameter('amr1_cmd_topic').value)
+        self.amr2_cmd_topic = str(self.get_parameter('amr2_cmd_topic').value)
 
         # -------------------------------------------------------------
         # ROS 2 Publishers for Both Robots
         # -------------------------------------------------------------
-        self.amr1_pub = self.create_publisher(Twist, '/model/amr/cmd_vel', 10)
-        self.amr2_pub = self.create_publisher(Twist, '/model/amr2/cmd_vel', 10)
+        self.amr1_pub = self.create_publisher(Twist, self.amr1_cmd_topic, 10)
+        self.amr2_pub = self.create_publisher(Twist, self.amr2_cmd_topic, 10)
+        self.estop_pub = self.create_publisher(Bool, '/fleet/emergency_stop', 10)
+        self.emergency_stop_active = False
 
         # Current velocity command objects
         self.amr1_cmd = Twist()
@@ -253,6 +260,25 @@ class DualAmrTeleopController(Node):
             self.amr2_pub.publish(zero)
             time.sleep(0.01)
 
+    def trigger_emergency_stop(self):
+        """Broadcasts emergency stop across fleet and zeros commands."""
+        self.emergency_stop_active = True
+        self.stop_all()
+        self.last_key_label = "E-STOP (ACTIVE)"
+        msg = Bool(data=True)
+        for _ in range(3):
+            self.estop_pub.publish(msg)
+            time.sleep(0.01)
+
+    def reset_emergency_stop(self):
+        """Clears emergency stop across the fleet."""
+        self.emergency_stop_active = False
+        self.last_key_label = "E-STOP CLEARED"
+        msg = Bool(data=False)
+        for _ in range(3):
+            self.estop_pub.publish(msg)
+            time.sleep(0.01)
+
 
 def get_key(fd, timeout=0.05):
     """
@@ -311,6 +337,8 @@ def get_key(fd, timeout=0.05):
         return 'L'
     elif b'x' in data_lower:
         return 'X'
+    elif b'r' in data_lower:
+        return 'R'
     elif b'q' in data_lower:
         return 'Q'
 
@@ -405,9 +433,11 @@ def main(args=None):
             elif key == 'L':
                 controller.both_turn_right()
 
-            # Emergency Stop
+            # Emergency Stop & Reset
             elif key in ['SPACE', 'X']:
-                controller.stop_all()
+                controller.trigger_emergency_stop()
+            elif key == 'R':
+                controller.reset_emergency_stop()
 
             # Safe Exit
             elif key in ['Q', 'CTRL_C']:
